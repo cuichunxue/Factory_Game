@@ -312,11 +312,14 @@ function newGame(){
 
 // ── Start / End ────────────────────────────────────────────────────────────
 function startGame(){
-  game=newGame(); mode='play'; showScreen(null); toast('地下循環、開始！');
+  if(mode==='play') return;
+  game=newGame(); mode='play'; showScreen(null);
+  $('hint').style.display='none';
+  toast('地下循環、開始！');
   for(let i=0;i<12;i++) spawnEnemy('mold');
   if(AC){ if(AC.state==='suspended')AC.resume(); playBGM(); }
 }
-function goTitle(){ stopBGM(); mode='title'; showScreen('title'); }
+function goTitle(){ stopBGM(); mode='title'; showScreen('title'); $('hint').style.display=''; }
 function endGame(win){
   if(!game||mode==='result') return;
   mode='result'; stopBGM();
@@ -547,10 +550,10 @@ function hitEnemy(e,dmg){
 }
 
 function updateBullets(dt){
+  const targets=game.enemies.concat(game.boss&&!game.boss.dead?[game.boss]:[]);
   for(const b of game.bullets){
     b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
-    const list=game.enemies.slice(); if(game.boss&&!game.boss.dead) list.push(game.boss);
-    for(const e of list){ if(e.hp>0&&dist(b.x,b.y,e.x,e.y)<(e.r||40)+b.r){hitEnemy(e,b.dmg);b.life=-1;break;} }
+    for(const e of targets){ if(e.hp>0&&dist(b.x,b.y,e.x,e.y)<(e.r||40)+b.r){hitEnemy(e,b.dmg);b.life=-1;break;} }
   }
   game.bullets=game.bullets.filter(b=>b.life>0);
 }
@@ -604,7 +607,7 @@ function spr(img,cx,cy,w,h){
 
 function drawWorld(){
   ctx.fillStyle='#2b1508';
-  ctx.fillRect(0,0,WORLD,WORLD);
+  ctx.fillRect(game.cam.x,game.cam.y,W,H);
   // Soil tile variation
   const cx0=Math.floor(game.cam.x/80)*80-80, cy0=Math.floor(game.cam.y/80)*80-80;
   const cx1=game.cam.x+W+160,               cy1=game.cam.y+H+160;
@@ -761,8 +764,8 @@ function drawHUD(){
   rr(hpX,hpY,hpW,hpH,6,'#2c080a');
   const hr=p.hp/p.maxHp;
   const hpFill=hr<.3?'#e03030':hr<.6?'#d05820':'#b84a18';
-  rr(hpX,hpY,hpW*hr,hpH,6,hpFill);
-  ctx.globalAlpha=.3; rr(hpX,hpY,hpW*hr,9,6,'#ffb070'); ctx.globalAlpha=1;
+  if(hr>0){ rr(hpX,hpY,hpW*hr,hpH,6,hpFill);
+  ctx.globalAlpha=.3; rr(hpX,hpY,hpW*hr,9,6,'#ffb070'); ctx.globalAlpha=1; }
   ctx.fillStyle='#fff8e0'; ctx.font='900 11px system-ui'; ctx.textAlign='center';
   ctx.fillText(Math.ceil(p.hp)+' / '+p.maxHp,hpX+hpW/2,hpY+14); ctx.textAlign='left';
 
@@ -783,8 +786,9 @@ function drawHUD(){
   ctx.fillText('Lv.'+p.level,lvBx+20,xY+12); ctx.textAlign='left';
   ctx.fillStyle='#ffd890'; ctx.font='900 11px system-ui'; ctx.fillText(formName(),xX,xY-5);
   rr(xX,xY,xW,13,6,'rgba(25,10,3,.82)');
-  rr(xX,xY,xW*(p.xp/p.need),13,6,'#72c828');
-  ctx.globalAlpha=.28; rr(xX,xY,xW*(p.xp/p.need),6,6,'#c8ff70'); ctx.globalAlpha=1;
+  if(p.xp>0){ const xr=xW*(p.xp/p.need);
+  rr(xX,xY,xr,13,6,'#72c828');
+  ctx.globalAlpha=.28; rr(xX,xY,xr,6,6,'#c8ff70'); ctx.globalAlpha=1; }
 
   // ── Boss HP ──
   if(game.boss&&!game.boss.dead){
