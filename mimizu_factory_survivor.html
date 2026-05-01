@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>ミミズ工場サバイバー FINAL</title>
+<style>
+:root{
+  --ink:#3b2311; --paper:#fff0cd; --paper2:#f4d99b; --soil:#241306;
+  --brown:#6d3f1c; --dark:#2b1709; --gold:#f4b83a; --green:#96dc4c;
+  --red:#df4d39; --purple:#7d39b6; --blue:#58bff2;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#160b05;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",system-ui,sans-serif}
+#app{position:relative;width:100vw;height:100vh;background:radial-gradient(circle at 50% 36%,#654323 0%,#2d180b 48%,#120802 100%)}
+#game{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;touch-action:none;cursor:crosshair}
+.overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(16,8,3,.70);pointer-events:auto}
+.hidden{display:none!important}
+.panel{width:min(780px,94vw);max-height:92vh;overflow:auto;background:linear-gradient(#fff8e6,#efd297);border:4px solid #563013;border-radius:24px;box-shadow:0 22px 60px rgba(0,0,0,.42),inset 0 0 0 2px rgba(255,255,255,.55);padding:20px}
+.logo{margin:0 0 10px;text-align:center;font-weight:1000;line-height:1.04;letter-spacing:.02em;font-size:clamp(34px,8vw,68px);color:#4b2a12;text-shadow:0 4px 0 #d99534,0 7px 0 #231105}
+.sub{margin:0 0 14px;text-align:center;color:#6c3e1a;font-weight:950;font-size:clamp(14px,3.2vw,20px)}
+.box{background:#fff9e8;border:2px dashed #9b6a35;border-radius:16px;padding:12px 14px;font-weight:850;line-height:1.6;margin:12px 0}.center{text-align:center}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.mini{background:#fff9e9;border:2px solid #c89449;border-radius:14px;padding:10px;font-weight:950;text-align:center;line-height:1.45}
+button,.btn,.card{touch-action:manipulation;pointer-events:auto}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:3px solid #48250e;border-radius:999px;background:linear-gradient(#ffe58b,#dd9827);box-shadow:0 7px 0 #6a3b16,inset 0 2px 0 rgba(255,255,255,.65);font-size:22px;font-weight:1000;color:#321a0a;padding:14px 32px;min-width:190px;cursor:pointer}.btn:active,.card:active{transform:translateY(3px);box-shadow:0 4px 0 #6a3b16}.btn.small{font-size:16px;padding:10px 16px;min-width:auto}.btn.green{background:linear-gradient(#cdfb72,#72b72b)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}.card{background:linear-gradient(#fff9e7,#e8c98d);border:3px solid #6a3d1a;border-radius:18px;box-shadow:0 7px 0 #4a2a13;min-height:168px;padding:14px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between}.card h3{margin:0;font-size:18px}.icon{font-size:42px;text-align:center;margin:4px 0}.card p{margin:0;font-size:13px;line-height:1.5;font-weight:850;color:#5b3517}.lv{display:inline-block;background:#6a3d1a;color:#fff1ca;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:950;margin-bottom:5px}.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.stat{background:#fff9e8;border:2px solid #c89449;border-radius:14px;padding:12px;font-weight:950}.wisdom{background:#edffdb;border:3px solid #83a63d;border-radius:16px;padding:14px;font-weight:950;line-height:1.55;margin:14px 0;color:#324d12;white-space:pre-line}.actionRow{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+#toast{position:absolute;left:50%;top:15%;transform:translateX(-50%);z-index:16;background:rgba(255,246,210,.96);border:3px solid #6b3e1b;border-radius:18px;padding:10px 18px;font-size:18px;font-weight:1000;pointer-events:none;opacity:0;transition:.18s;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.25)}#toast.show{opacity:1;transform:translateX(-50%) translateY(-5px)}
+#hint{position:absolute;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:10;background:rgba(40,22,8,.62);color:#ffecc0;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:900;pointer-events:none;white-space:nowrap}#selftest{position:absolute;left:8px;top:8px;z-index:200;background:#fff;border:2px solid #111;border-radius:8px;padding:6px;font:12px monospace;color:#111;display:none;white-space:pre-wrap;max-width:94vw}
+@media(max-width:660px){.panel{padding:15px}.grid3,.cards,.stats{grid-template-columns:1fr}.card{min-height:120px}.btn{width:84%;max-width:360px}.logo{font-size:clamp(32px,10vw,54px)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game" aria-label="game canvas"></canvas>
+  <div id="toast"></div>
+  <div id="hint">指でなぞって移動 / PCはWASD・矢印キー</div>
+  <div id="selftest"></div>
+
+  <section id="titleScreen" class="overlay" data-screen="title">
+    <div class="panel">
+      <h1 class="logo">ミミズ工場<br>サバイバー</h1>
+      <p class="sub">土の下の工場を、知恵で守れ。</p>
+      <div class="box">操作はとても簡単。<b>指で移動するだけ</b>。攻撃は自動、レベルアップ時だけ3択カードを選びます。</div>
+      <div class="grid3">
+        <div class="mini">① 移動だけ<br>攻撃は自動</div>
+        <div class="mini">② 知恵カード<br>3択で強化</div>
+        <div class="mini">③ 180秒生存<br>地下循環を守る</div>
+      </div>
+      <div class="center"><button id="startBtn" class="btn" data-action="start" type="button">スタート</button></div>
+    </div>
+  </section>
+
+  <section id="cardScreen" class="overlay hidden" data-screen="cards">
+    <div class="panel">
+      <h2 class="logo" style="font-size:40px">レベルアップ！</h2>
+      <p class="sub">この一手で流れを変えろ</p>
+      <div id="cardList" class="cards"></div>
+    </div>
+  </section>
+
+  <section id="resultScreen" class="overlay hidden" data-screen="result">
+    <div class="panel">
+      <h2 id="resultTitle" class="logo" style="font-size:46px"></h2>
+      <div class="stats">
+        <div class="stat">生存時間：<span id="stTime">0秒</span></div>
+        <div class="stat">ほぐした問題：<span id="stKills">0</span></div>
+        <div class="stat">到達レベル：<span id="stLv">1</span></div>
+        <div class="stat">ランク：<span id="stRank">D</span></div>
+      </div>
+      <div id="cause" class="box"></div>
+      <div id="wisdom" class="wisdom"></div>
+      <div class="actionRow">
+        <button id="retryBtn" class="btn green" data-action="start" type="button">もう一回</button>
+        <button id="titleBtn" class="btn small" data-action="title" type="button">タイトルへ</button>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const canvas = $('game');
+const ctx = canvas.getContext('2d');
+const screens = { title:$('titleScreen'), cards:$('cardScreen'), result:$('resultScreen') };
+const cardList = $('cardList');
+const toastEl = $('toast');
+const selftestEl = $('selftest');
+const TAU = Math.PI * 2;
+let W = 1, H = 1, DPR = 1, last = 0, mode = 'title', game = null, toastTime = 0;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rand=(a,b)=>a+Math.random()*(b-a);
+const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
+const angle=(a,b,c,d)=>Math.atan2(d-b,c-a);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const abilityDefs = [
+  {id:'wind',name:'風の通り道',icon:'🌬️',desc:'毒カビの広がりを弱める',wisdom:'環境を整えると、異常は広がりにくくなる。'},
+  {id:'moisture',name:'水分ちょうど',icon:'💧',desc:'ぬかるみでも動きやすくなる',wisdom:'条件は多すぎても少なすぎても悪い。ちょうどよい管理が大事。'},
+  {id:'loosen',name:'土をほぐす',icon:'⛏️',desc:'土塊岩を壊しやすくする',wisdom:'詰まりをほぐすと、全体の流れがよくなる。'},
+  {id:'rootEye',name:'根を見抜く眼',icon:'👁️',desc:'根っこを先に攻撃する',wisdom:'見えにくい制約条件を見つけることが、問題解決の第一歩。'},
+  {id:'decompose',name:'分解加速',icon:'🍂',desc:'処理する力が上がる',wisdom:'滞留を早く処理すると、全体が軽くなる。'},
+  {id:'focus',name:'大物からほぐす',icon:'🎯',desc:'一番邪魔な敵を集中攻撃',wisdom:'全部を均等に頑張るより、大きな問題から対策する。'},
+  {id:'barrier',name:'共生バリア',icon:'🛡️',desc:'ダメージを1回防ぐ',wisdom:'弱さを補う仕組みがあると、全体は安定する。'},
+  {id:'awaken',name:'循環覚醒',icon:'✨',desc:'10秒間、一気に強くなる',wisdom:'流れがつながると、全体の力が一気に高まる。'}
+];
+const abilities = Object.fromEntries(abilityDefs.map(d=>[d.id,0]));
+function resize(){
+  DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  W = Math.max(320, innerWidth); H = Math.max(460, innerHeight);
+  canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR);
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+addEventListener('resize', resize, {passive:true}); resize();
+function showScreen(name){
+  Object.values(screens).forEach(s=>s.classList.add('hidden'));
+  if(name && screens[name]) screens[name].classList.remove('hidden');
+}
+function toast(text){toastEl.textContent=text; toastEl.classList.add('show'); toastTime=1.3;}
+function xpNeed(lv){ return [0,10,18,28,42,60,84,112,145][lv] || 170 + lv * 28; }
+function formLevel(){ const lv = game?.player?.level || 1; return lv>=7?4:lv>=5?3:lv>=3?2:1; }
+function formName(){ return ['','ほぐしミミズ','のびるミミズ','再生ミミズ','循環マスター'][formLevel()]; }
+function resetAbilities(){ Object.keys(abilities).forEach(k=>abilities[k]=0); }
+function newGame(){
+  resetAbilities();
+  return {
+    time:0, limit:180, worldW:3000, worldH:3000, cam:{x:0,y:0}, kills:0, score:0,
+    player:{x:1500,y:1500,hp:100,maxHp:100,level:1,xp:0,need:10,dir:0,inv:0,atkCd:0,awake:0,barrierCd:0,barrierReady:false,trail:[],regen:0},
+    enemies:[], hazards:[], orbs:[], bullets:[], particles:[], boss:null, bossAnnounced:false, result:null,
+    spawn:{mold:0,rock:8,root:14,mud:7,boss:0},
+    joy:null, keys:Object.create(null), paused:false, cardChoices:[]
+  };
+}
+function startGame(){
+  game = newGame();
+  mode = 'play'; showScreen(null); toast('地下循環、開始！');
+  for(let i=0;i<12;i++) spawnEnemy('mold');
+}
+function goTitle(){ mode='title'; showScreen('title'); }
+function endGame(win){
+  if(!game || mode==='result') return;
+  mode='result';
+  const t = Math.floor(Math.min(game.time, game.limit));
+  const rank = win ? (game.player.hp>=70?'S':'A') : (t>=150?'B':t>=90?'C':'D');
+  const analysis = analyzeResult(win);
+  $('resultTitle').textContent = win ? '地下循環、復旧！' : '地下循環、停止…';
+  $('stTime').textContent = t + '秒'; $('stKills').textContent = String(game.kills);
+  $('stLv').textContent = String(game.player.level); $('stRank').textContent = rank;
+  $('cause').textContent = analysis.cause;
+  $('wisdom').textContent = analysis.wisdom;
+  showScreen('result');
+}
+function analyzeResult(win){
+  if(win) return {cause:'勝因：小さな異常を早めにほぐし、地下の流れを守りました。', wisdom:'今日の知恵：良い流れは、小さな異常を早く見つけることから始まる。'};
+  const r = game.result || {};
+  if((r.moldSpread||0)>=3) return {cause:'敗因：毒カビを放置して、地下に広がりました。', wisdom:'今日の知恵：小さな異常は、早く止めるほど被害が小さい。'};
+  if((r.mudTime||0)>=15) return {cause:'敗因：ぬかるみに足を取られ、逃げ道を失いました。', wisdom:'今日の知恵：溜まりすぎると、流れは重くなる。'};
+  if((r.rootHits||0)>=4) return {cause:'敗因：根っこに通路をふさがれました。', wisdom:'今日の知恵：見えにくい制約条件が、全体を止めることがある。'};
+  return {cause:'敗因：小さな問題に囲まれ、動ける場所が狭くなりました。', wisdom:'今日の知恵：小さなムダも積み重なると、大きな損失になる。'};
+}
+function openCards(){
+  if(mode!=='play') return;
+  mode='cards';
+  const pool = abilityDefs.slice().sort(()=>Math.random()-.5).slice(0,3);
+  game.cardChoices = pool;
+  cardList.innerHTML = pool.map((d,i)=>`<button type="button" class="card" data-action="choose-card" data-card-index="${i}"><span class="lv">Lv.${(abilities[d.id]||0)+1}</span><h3>${d.name}</h3><div class="icon">${d.icon}</div><p>${d.desc}</p></button>`).join('');
+  showScreen('cards');
+}
+function chooseCard(index){
+  if(mode!=='cards' || !game) return;
+  const card = game.cardChoices[index]; if(!card) return;
+  abilities[card.id] = Math.min(3,(abilities[card.id]||0)+1);
+  if(card.id==='awaken') game.player.awake = Math.max(game.player.awake, 10 + abilities.awaken*2);
+  if(card.id==='barrier') game.player.barrierReady = true;
+  mode='play'; showScreen(null); toast(card.name + '！');
+}
+function uiAction(target){
+  const node = target.closest ? target.closest('[data-action]') : null;
+  if(!node) return false;
+  const a = node.dataset.action;
+  if(a==='start') startGame();
+  else if(a==='title') goTitle();
+  else if(a==='choose-card') chooseCard(Number(node.dataset.cardIndex));
+  else return false;
+  return true;
+}
+// Single robust event delegation: works for desktop click, iOS Safari taps, and pointer devices.
+['click','touchend','pointerup'].forEach(type=>{
+  document.addEventListener(type, ev=>{
+    if(uiAction(ev.target)){ ev.preventDefault(); ev.stopPropagation(); }
+  }, {passive:false, capture:true});
+});
+function spawnPoint(){
+  const p=game.player, side=Math.floor(rand(0,4)); let x=p.x,y=p.y; const d=rand(360,520);
+  if(side===0){x=p.x-d;y=p.y+rand(-d,d)} if(side===1){x=p.x+d;y=p.y+rand(-d,d)}
+  if(side===2){x=p.x+rand(-d,d);y=p.y-d} if(side===3){x=p.x+rand(-d,d);y=p.y+d}
+  return {x:clamp(x,50,game.worldW-50), y:clamp(y,50,game.worldH-50)};
+}
+function spawnEnemy(type){
+  const p=spawnPoint();
+  const base = {mold:{hp:26,r:23,spd:28,dmg:6,xp:5}, rock:{hp:86,r:34,spd:14,dmg:8,xp:8}, root:{hp:42,r:25,spd:20,dmg:7,xp:6}}[type];
+  game.enemies.push({type,x:p.x,y:p.y,hp:base.hp,max:base.hp,r:base.r,spd:base.spd,dmg:base.dmg,xp:base.xp,age:0,split:0,hit:0,reach:0});
+}
+function spawnMud(){ const p=spawnPoint(); game.hazards.push({type:'mud',x:p.x,y:p.y,r:rand(44,70),life:18,age:0,danger:game.time>120}); }
+function spawnBoss(){
+  const p=spawnPoint(); game.boss = {type:'boss',x:p.x,y:p.y,hp:900,max:900,r:96,spd:25,dmg:15,age:0,atk:2,dead:false,hit:0};
+  game.bossAnnounced = true; toast('地下崩落ボス出現！'); if(game.player.awake<=0) game.player.awake=8;
+}
+function damagePlayer(amount, kind){
+  const p=game.player; if(p.inv>0) return;
+  if(p.barrierReady){ p.barrierReady=false; p.inv=.55; toast('共生バリア！'); return; }
+  p.hp = Math.max(0, p.hp-amount); p.inv=.8; p.regen=1.2;
+  game.result = game.result || {moldSpread:0,mudTime:0,rootHits:0};
+  if(kind==='root') game.result.rootHits++;
+  if(p.hp<=0) endGame(false);
+  if(p.hp<=30 && p.awake<=0){ p.awake=8; toast('循環覚醒！'); }
+}
+function update(dt){
+  if(!game || mode!=='play') return;
+  const p=game.player; game.time += dt; if(game.time>=game.limit){ endGame(true); return; }
+  p.inv=Math.max(0,p.inv-dt); p.awake=Math.max(0,p.awake-dt); p.atkCd=Math.max(0,p.atkCd-dt); p.barrierCd=Math.max(0,p.barrierCd-dt);
+  if(abilities.barrier>0 && !p.barrierReady && p.barrierCd<=0){ p.barrierReady=true; p.barrierCd=Math.max(16,32-abilities.barrier*6); }
+  if((formLevel()>=3 || abilities.barrier>0) && p.regen>0){ p.regen-=dt; p.hp=Math.min(p.maxHp,p.hp+dt*(formLevel()>=3?3.5:1.3)); }
+  movePlayer(dt); spawnUpdate(dt); enemyUpdate(dt); bossUpdate(dt); bulletUpdate(dt); hazardUpdate(dt); orbUpdate(dt); particleUpdate(dt); cameraUpdate();
+}
+function movePlayer(dt){
+  const p=game.player; let dx=0,dy=0;
+  if(game.joy){dx=game.joy.dx;dy=game.joy.dy;}
+  if(game.keys.ArrowLeft||game.keys.a||game.keys.A)dx-=1; if(game.keys.ArrowRight||game.keys.d||game.keys.D)dx+=1;
+  if(game.keys.ArrowUp||game.keys.w||game.keys.W)dy-=1; if(game.keys.ArrowDown||game.keys.s||game.keys.S)dy+=1;
+  let len=Math.hypot(dx,dy); if(len>1){dx/=len;dy/=len;}
+  let slow=1; for(const h of game.hazards){ if(dist(p.x,p.y,h.x,h.y)<h.r){ slow*= Math.max(.2,.75-abilities.moisture*.18); game.result=game.result||{moldSpread:0,mudTime:0,rootHits:0}; game.result.mudTime=(game.result.mudTime||0)+dt; if(h.danger) damagePlayer(4*dt,'mud'); }}
+  let speed=(130 + (formLevel()===2?22:0) + abilities.moisture*6 + (p.awake>0?85:0))*slow;
+  p.x=clamp(p.x+dx*speed*dt,35,game.worldW-35); p.y=clamp(p.y+dy*speed*dt,35,game.worldH-35); if(len>.05)p.dir=Math.atan2(dy,dx);
+  p.trail.unshift({x:p.x,y:p.y}); const maxTrail=formLevel()===2?42:28; if(p.trail.length>maxTrail)p.trail.pop();
+}
+function spawnUpdate(dt){
+  game.spawn.mold-=dt; if(game.spawn.mold<=0){spawnEnemy('mold'); game.spawn.mold=Math.max(.28,1.25-game.time/180*.8-abilities.wind*.15);}
+  if(game.time>35){ game.spawn.rock-=dt; if(game.spawn.rock<=0){spawnEnemy('rock'); game.spawn.rock=Math.max(2.8,7-game.time/55);} }
+  if(game.time>55){ game.spawn.mud-=dt; if(game.spawn.mud<=0){spawnMud(); game.spawn.mud=Math.max(2.4,6-game.time/80);} }
+  if(game.time>85){ game.spawn.root-=dt; if(game.spawn.root<=0){spawnEnemy('root'); game.spawn.root=Math.max(2.4,7-game.time/90);} }
+  if(game.time>=150 && !game.bossAnnounced) spawnBoss();
+  if(game.enemies.length>95) game.enemies.splice(0,game.enemies.length-95);
+}
+function enemyUpdate(dt){
+  const p=game.player;
+  for(const e of game.enemies){
+    e.age+=dt; e.hit=Math.max(0,e.hit-dt); let a=angle(e.x,e.y,p.x,p.y);
+    if(e.type==='rock') { e.x+=Math.cos(a)*e.spd*dt; e.y+=Math.sin(a)*e.spd*dt; }
+    else if(e.type==='root') { e.reach=Math.max(0,Math.sin(e.age*2.3)); e.x+=Math.cos(a)*e.spd*.35*dt; e.y+=Math.sin(a)*e.spd*.35*dt; }
+    else { e.x+=Math.cos(a)*e.spd*dt; e.y+=Math.sin(a)*e.spd*dt; if(e.age>8-abilities.wind*1.5 && e.split<2){ e.split++; e.age=0; if(game.enemies.length<90){ game.enemies.push({...e,x:e.x+rand(-24,24),y:e.y+rand(-24,24),hp:18,max:18,r:18,split:2}); } game.result=game.result||{moldSpread:0,mudTime:0,rootHits:0}; game.result.moldSpread=(game.result.moldSpread||0)+1; } }
+    if(dist(e.x,e.y,p.x,p.y)<e.r+18+(e.type==='root'?e.reach*32:0)) damagePlayer(e.dmg*dt*2.2,e.type==='root'?'root':'enemy');
+  }
+  autoAttack(dt);
+  game.enemies=game.enemies.filter(e=>e.hp>0);
+}
+function bossUpdate(dt){
+  const b=game.boss,p=game.player; if(!b || b.dead) return; b.age+=dt; b.hit=Math.max(0,b.hit-dt);
+  const a=angle(b.x,b.y,p.x,p.y); b.x+=Math.cos(a)*b.spd*dt; b.y+=Math.sin(a)*b.spd*dt;
+  if(dist(b.x,b.y,p.x,p.y)<b.r+24) damagePlayer(b.dmg*dt*1.6,'boss');
+  b.atk-=dt; if(b.atk<=0){ b.atk=rand(2.2,4.0); const roll=Math.random(); if(roll<.35){ for(let i=0;i<3;i++) spawnEnemy('rock'); toast('落石の雨！'); } else if(roll<.7){ for(let i=0;i<4;i++) spawnEnemy('mold'); toast('毒胞子！'); } else { spawnEnemy('root'); spawnEnemy('root'); toast('根の重撃！'); }}
+}
+function autoAttack(){
+  const p=game.player; if(p.atkCd>0) return;
+  let target=null, best=Infinity, list=game.enemies.slice(); if(game.boss&&!game.boss.dead) list.push(game.boss);
+  const preferRoot=abilities.rootEye>0, preferFocus=abilities.focus>0;
+  for(const e of list){
+    let d=dist(p.x,p.y,e.x,e.y); let score=d;
+    if(preferRoot && e.type==='root')score-=220; if(preferFocus && (e.type==='rock'||e.type==='boss'))score-=160;
+    if(score<best){best=score; target=e;}
+  }
+  if(!target || best>520) return;
+  const a=angle(p.x,p.y,target.x,target.y), sp=520;
+  const dmg=15 + abilities.decompose*5 + (abilities.loosen&&target.type==='rock'?abilities.loosen*14:0) + (p.awake>0?18:0) + (formLevel()===4?8:0);
+  game.bullets.push({x:p.x,y:p.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:6,dmg,life:.9});
+  p.atkCd=Math.max(.22, .88 - abilities.decompose*.09 - (p.awake>0?.32:0));
+}
+function hitEnemy(e,dmg){
+  e.hp-=dmg; e.hit=.1; particles(e.x,e.y,'#e6ff62',5,60);
+  if(e.hp<=0){
+    if(e.type==='boss'){ e.dead=true; game.score+=500; for(let i=0;i<18;i++) dropOrb(e.x+rand(-80,80),e.y+rand(-60,60),8); toast('地下崩落ボス撃破！'); }
+    else { game.kills++; game.score+=20; dropOrb(e.x,e.y,e.xp||5); }
+  }
+}
+function bulletUpdate(dt){
+  for(const b of game.bullets){
+    b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+    const list=game.enemies.slice(); if(game.boss&&!game.boss.dead) list.push(game.boss);
+    for(const e of list){ if(e.hp>0 && dist(b.x,b.y,e.x,e.y)<(e.r||40)+b.r){ hitEnemy(e,b.dmg); b.life=-1; break; }}
+  }
+  game.bullets=game.bullets.filter(b=>b.life>0);
+}
+function hazardUpdate(dt){ for(const h of game.hazards){ h.life-=dt; h.age+=dt; } game.hazards=game.hazards.filter(h=>h.life>0); }
+function dropOrb(x,y,amount){ game.orbs.push({x,y,vx:rand(-60,60),vy:rand(-60,60),r:6,a:amount,got:false}); }
+function orbUpdate(dt){
+  const p=game.player, attract=64+abilities.moisture*9+(p.awake>0?90:0)+(formLevel()===4?45:0);
+  for(const o of game.orbs){
+    o.x+=o.vx*dt; o.y+=o.vy*dt; o.vx*=Math.pow(.4,dt); o.vy*=Math.pow(.4,dt);
+    const d=dist(o.x,o.y,p.x,p.y); if(d<attract){ const a=angle(o.x,o.y,p.x,p.y), s=460*(1-d/attract); o.vx+=Math.cos(a)*s*dt*8; o.vy+=Math.sin(a)*s*dt*8; }
+    if(d<23){ o.got=true; p.xp+=o.a; particles(o.x,o.y,'#b8ff39',5,45); }
+  }
+  game.orbs=game.orbs.filter(o=>!o.got);
+  if(p.xp>=p.need && mode==='play'){ p.xp-=p.need; p.level++; p.need=xpNeed(p.level); openCards(); }
+}
+function particles(x,y,color,n,spd){ for(let i=0;i<n;i++){ const a=rand(0,TAU),s=rand(spd*.2,spd); game.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:rand(2,5),life:rand(.25,.7),age:0,color}); } }
+function particleUpdate(dt){ for(const p of game.particles){p.age+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(.08,dt);p.vy*=Math.pow(.08,dt);} game.particles=game.particles.filter(p=>p.age<p.life); }
+function cameraUpdate(){ const c=game.cam,p=game.player; c.x=clamp(lerp(c.x,p.x-W/2,.12),0,game.worldW-W); c.y=clamp(lerp(c.y,p.y-H/2,.12),0,game.worldH-H); }
+function roundRect(x,y,w,h,r,fill,stroke,lw=2){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); if(fill){ctx.fillStyle=fill;ctx.fill();} if(stroke){ctx.lineWidth=lw;ctx.strokeStyle=stroke;ctx.stroke();} }
+function draw(){
+  ctx.clearRect(0,0,W,H); if(!game){ ctx.fillStyle='#211106'; ctx.fillRect(0,0,W,H); return; }
+  ctx.save(); ctx.translate(-game.cam.x,-game.cam.y); drawWorld(); game.hazards.forEach(drawMud); game.orbs.forEach(drawOrb); game.enemies.forEach(drawEnemy); if(game.boss&&!game.boss.dead) drawBoss(game.boss); game.bullets.forEach(drawBullet); drawPlayer(game.player); game.particles.forEach(drawParticle); ctx.restore(); drawHUD();
+}
+function drawWorld(){
+  ctx.fillStyle='#34200e'; ctx.fillRect(0,0,game.worldW,game.worldH);
+  const sx=Math.floor(game.cam.x/120)*120-120, ex=game.cam.x+W+120, sy=Math.floor(game.cam.y/120)*120-120, ey=game.cam.y+H+120;
+  for(let x=sx;x<ex;x+=120) for(let y=sy;y<ey;y+=120){ const n=Math.sin(x*.012+y*.009)*.5+.5; ctx.fillStyle=n>.56?'#402713':'#2d1a0c'; ctx.fillRect(x,y,120,120); }
+  ctx.globalAlpha=.28; for(let x=sx;x<ex;x+=48) for(let y=sy;y<ey;y+=48){ const r=2+Math.abs((x*y)%7); ctx.fillStyle=(x+y)%3?'#80522a':'#5b391d'; ctx.beginPath(); ctx.ellipse(x+((x*y)%23),y+((x+y)%29),r*1.4,r,0,0,TAU); ctx.fill(); } ctx.globalAlpha=1;
+}
+function drawPlayer(p){
+  const f=formLevel(), segs=f===2?11:f===3?8:f===4?9:7, size=f===3?18:f===4?17:16;
+  ctx.save(); if(p.inv>0 && Math.floor(p.inv*18)%2===0) ctx.globalAlpha=.45; if(p.awake>0){ctx.shadowColor='#cfff4a';ctx.shadowBlur=25;}
+  for(let i=segs-1;i>=0;i--){ const q=p.trail[Math.min(p.trail.length-1,Math.floor(i*(p.trail.length-1)/(segs-1)))]||p; const rad=size*(1-i/segs*.34)*(f===2?.9:1)+Math.sin(game.time*10+i)*1.2; ctx.fillStyle=f===4?'#e88660':f===3?'#e77861':'#e97959'; ctx.strokeStyle='#54220f'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(q.x,q.y,rad*1.18,rad*.9,p.dir,0,TAU); ctx.fill(); ctx.stroke(); }
+  const h=p.trail[0]||p, r=size*1.25; ctx.fillStyle='#f28d66'; ctx.strokeStyle='#54220f'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(h.x,h.y,r*1.1,r,p.dir,0,TAU); ctx.fill(); ctx.stroke();
+  ctx.save(); ctx.translate(h.x,h.y); ctx.rotate(p.dir); ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(7,-7,3.6,0,TAU); ctx.arc(7,7,3.6,0,TAU); ctx.fill(); ctx.strokeStyle='#381b0c'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.arc(14,0,7,-.8,.8); ctx.stroke(); ctx.fillStyle='#7c471d'; ctx.fillRect(-8,-r-5,20,5); ctx.fillStyle='#f6c046'; ctx.strokeStyle='#5c3414'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(5,-r-6,8,0,TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle='#fff6a8'; ctx.beginPath(); ctx.arc(5,-r-6,4.5,0,TAU); ctx.fill(); ctx.restore(); ctx.restore();
+}
+function drawMold(x,y,r){ ctx.save(); ctx.translate(x,y); ctx.fillStyle='#5b1a88'; ctx.strokeStyle='#21102d'; ctx.lineWidth=3; for(let i=0;i<5;i++){ const a=i/5*TAU; ctx.beginPath(); ctx.ellipse(Math.cos(a)*r*.44,Math.sin(a)*r*.28,r*.45,r*.36,0,0,TAU); ctx.fill(); ctx.stroke(); } ctx.fillStyle='#8b35c0'; ctx.beginPath(); ctx.ellipse(0,-r*.2,r*.78,r*.9,0,0,TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle='#a8ff29'; for(let i=0;i<5;i++){ ctx.beginPath(); ctx.arc(Math.cos(i*1.8)*r*.42,Math.sin(i*1.4)*r*.34,4,0,TAU); ctx.fill(); } ctx.restore(); }
+function drawRock(x,y,r){ ctx.save(); ctx.translate(x,y); ctx.fillStyle='#8a5528'; ctx.strokeStyle='#33190c'; ctx.lineWidth=3; ctx.beginPath(); for(let i=0;i<9;i++){ const a=i/9*TAU, rr=r*(.9+(i%3)*.08), px=Math.cos(a)*rr, py=Math.sin(a)*rr*.9; if(i)ctx.lineTo(px,py);else ctx.moveTo(px,py); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle='#5c5a54'; for(let i=0;i<3;i++){ ctx.beginPath(); ctx.ellipse(rand(-r*.45,r*.45),rand(-r*.4,r*.4),r*.23,r*.17,rand(0,1),0,TAU); ctx.fill(); } ctx.restore(); }
+function drawRoot(x,y,r,reach){ ctx.save(); ctx.translate(x,y); ctx.strokeStyle='#7a451e'; ctx.lineWidth=12; ctx.lineCap='round'; for(let i=0;i<3;i++){ const a=i*2.1+game.time*.2; ctx.beginPath(); ctx.moveTo(0,0); ctx.bezierCurveTo(Math.cos(a)*r*.8,Math.sin(a)*r*.7-30,Math.cos(a+.7)*r*1.1,Math.sin(a+.7)*r*.7-20,Math.cos(a+1)*r*(1.2+reach*1.8),Math.sin(a+1)*r*(.8+reach)); ctx.stroke(); } ctx.fillStyle='#6ba53a'; for(let i=0;i<3;i++){ ctx.beginPath(); ctx.ellipse(Math.cos(i*2)*r*.5,Math.sin(i*2)*r*.4-18,8,4,i,0,TAU); ctx.fill(); } ctx.restore(); }
+function drawEnemy(e){ ctx.save(); if(e.hit>0){ctx.shadowColor='#fff';ctx.shadowBlur=14;} if(e.type==='mold')drawMold(e.x,e.y,e.r); else if(e.type==='rock')drawRock(e.x,e.y,e.r); else if(e.type==='root')drawRoot(e.x,e.y,e.r,e.reach||0); ctx.restore(); }
+function drawMud(h){ ctx.save(); ctx.translate(h.x,h.y); ctx.globalAlpha=clamp(h.life/3,0,1); ctx.fillStyle=h.danger?'#30210f':'#432711'; ctx.strokeStyle=h.danger?'#a8dd35':'#2b1709'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(0,0,h.r*1.2,h.r*.62,.05,0,TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle=h.danger?'#9de126':'#6c431e'; for(let i=0;i<6;i++){ ctx.globalAlpha=h.danger?.55:.28; ctx.beginPath(); ctx.arc(Math.cos(i)*h.r*.65,Math.sin(i*2.3)*h.r*.22,7,0,TAU); ctx.fill(); } ctx.restore(); }
+function drawBoss(b){ ctx.save(); ctx.translate(b.x,b.y); const r=b.r; ctx.shadowColor='rgba(150,255,35,.5)';ctx.shadowBlur=20; ctx.fillStyle='#5b3317';ctx.strokeStyle='#221108';ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(-r*1.5,r*.55); ctx.quadraticCurveTo(-r*.8,-r*.9,0,-r*.95); ctx.quadraticCurveTo(r*.85,-r*.9,r*1.5,r*.55); ctx.closePath();ctx.fill();ctx.stroke(); for(let i=0;i<28;i++){ctx.fillStyle=i%5?'#8b5b2d':'#5f5d55';ctx.beginPath();ctx.arc(rand(-r*1.2,r*1.2),rand(-r*.65,r*.48),rand(6,14),0,TAU);ctx.fill();} ctx.fillStyle='#0a0604';ctx.beginPath();ctx.ellipse(0,r*.15,r*.48,r*.58,0,0,TAU);ctx.fill(); ctx.fillStyle='#dfff49';ctx.beginPath();ctx.arc(-r*.35,-r*.25,10,0,TAU);ctx.arc(r*.35,-r*.25,10,0,TAU);ctx.fill(); ctx.restore(); }
+function drawBullet(b){ ctx.save();ctx.fillStyle='#dfff59';ctx.shadowColor='#dfff59';ctx.shadowBlur=12;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,TAU);ctx.fill();ctx.restore(); }
+function drawOrb(o){ ctx.save();ctx.fillStyle='#a9f542';ctx.shadowColor='#cfff56';ctx.shadowBlur=10;ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,TAU);ctx.fill();ctx.restore(); }
+function drawParticle(p){ const a=1-p.age/p.life;ctx.globalAlpha=a;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r*a,0,TAU);ctx.fill();ctx.globalAlpha=1; }
+function drawHUD(){
+  if(!game) return; const p=game.player;
+  roundRect(12,10,Math.min(250,W*.50),30,15,'rgba(35,20,8,.72)','#8a5527',2); const hpW=Math.min(165,W*.33); roundRect(54,17,hpW,16,8,'#35120c'); roundRect(54,17,hpW*(p.hp/p.maxHp),16,8,p.hp<30?'#e14034':'#e65e35'); ctx.fillStyle='#fff5d2';ctx.font='900 15px system-ui';ctx.fillText('❤ '+Math.ceil(p.hp),24,31);
+  const left=Math.max(0,game.limit-game.time), mm=String(Math.floor(left/60)).padStart(2,'0'), ss=String(Math.floor(left%60)).padStart(2,'0'); roundRect(W-128,10,116,34,15,'rgba(35,20,8,.75)','#8a5527',2); ctx.fillStyle='#fff5d2';ctx.font='900 24px system-ui';ctx.textAlign='center';ctx.fillText(mm+':'+ss,W-70,35);ctx.textAlign='left';
+  const xpW=Math.min(310,W-28); roundRect(14,H-26,xpW,12,6,'rgba(35,20,8,.8)'); roundRect(14,H-26,xpW*(p.xp/p.need),12,6,'#88d748'); ctx.fillStyle='#fff3c9';ctx.font='900 13px system-ui';ctx.fillText('Lv.'+p.level+' '+formName(),18,H-34);
+  if(p.awake>0){ roundRect(W/2-75,54,150,30,15,'#d8ff53','#fff',2); ctx.fillStyle='#2e4d13';ctx.textAlign='center';ctx.font='900 18px system-ui';ctx.fillText('循環覚醒！',W/2,76);ctx.textAlign='left'; }
+  if(game.boss && !game.boss.dead){ const bw=Math.min(360,W-32); roundRect(W/2-bw/2,94,bw,16,8,'#32110d'); roundRect(W/2-bw/2,94,bw*(game.boss.hp/game.boss.max),16,8,'#b63329'); ctx.fillStyle='#fff0d0';ctx.font='900 13px system-ui';ctx.textAlign='center';ctx.fillText('地下崩落ボス',W/2,90);ctx.textAlign='left'; }
+  if(game.joy){ ctx.globalAlpha=.38;ctx.fillStyle='#fff3cb';ctx.beginPath();ctx.arc(game.joy.sx,game.joy.sy,54,0,TAU);ctx.fill();ctx.globalAlpha=.6;ctx.beginPath();ctx.arc(game.joy.sx+game.joy.dx*42,game.joy.sy+game.joy.dy*42,24,0,TAU);ctx.fill();ctx.globalAlpha=1; }
+}
+function pointerPos(e){ const r=canvas.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return {x:t.clientX-r.left,y:t.clientY-r.top}; }
+function pointerDown(e){ if(mode!=='play' || !game) return; const p=pointerPos(e); game.joy={sx:p.x,sy:p.y,dx:0,dy:0}; e.preventDefault(); }
+function pointerMove(e){ if(!game || !game.joy) return; const p=pointerPos(e), dx=p.x-game.joy.sx, dy=p.y-game.joy.sy, l=Math.hypot(dx,dy), m=54; game.joy.dx=l>m?dx/l:dx/m; game.joy.dy=l>m?dy/l:dy/m; e.preventDefault(); }
+function pointerUp(){ if(game) game.joy=null; }
+canvas.addEventListener('pointerdown',pointerDown,{passive:false}); window.addEventListener('pointermove',pointerMove,{passive:false}); window.addEventListener('pointerup',pointerUp,{passive:true});
+canvas.addEventListener('touchstart',pointerDown,{passive:false}); canvas.addEventListener('touchmove',pointerMove,{passive:false}); canvas.addEventListener('touchend',pointerUp,{passive:true});
+addEventListener('keydown',e=>{ if(game) game.keys[e.key]=true; }); addEventListener('keyup',e=>{ if(game) game.keys[e.key]=false; });
+function loop(now){ const dt=Math.min(.033,(now-last)/1000 || 0); last=now; if(toastTime>0){ toastTime-=dt; if(toastTime<=0) toastEl.classList.remove('show'); } update(dt); draw(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+// browser self-test, used by the verification script and harmless for normal play.
+async function runSelfTest(){
+  const lines=[]; const pass=(name,ok)=>{lines.push((ok?'PASS ':'FAIL ')+name); if(!ok) throw new Error(name);};
+  selftestEl.style.display='block';
+  await new Promise(r=>setTimeout(r,80));
+  $('startBtn').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); await new Promise(r=>setTimeout(r,80)); pass('start button changes mode to play', mode==='play' && screens.title.classList.contains('hidden'));
+  game.player.xp=game.player.need; update(.016); await new Promise(r=>setTimeout(r,80)); pass('level up opens card screen', mode==='cards' && cardList.children.length===3);
+  cardList.children[0].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); await new Promise(r=>setTimeout(r,80)); pass('card click returns to play', mode==='play' && screens.cards.classList.contains('hidden'));
+  endGame(false); await new Promise(r=>setTimeout(r,80)); pass('result screen opens', mode==='result' && !screens.result.classList.contains('hidden'));
+  $('retryBtn').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); await new Promise(r=>setTimeout(r,80)); pass('retry button starts play', mode==='play' && screens.result.classList.contains('hidden'));
+  endGame(false); await new Promise(r=>setTimeout(r,50)); $('titleBtn').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); await new Promise(r=>setTimeout(r,80)); pass('title button opens title', mode==='title' && !screens.title.classList.contains('hidden'));
+  selftestEl.textContent=lines.join('\n')+'\nALL_PASS'; document.body.setAttribute('data-selftest','PASS');
+}
+window.__MIMIZU_TEST__ = {startGame, endGame, openCards, chooseCard, getMode:()=>mode, getGame:()=>game};
+if(new URLSearchParams(location.search).get('selftest')==='1'){ runSelfTest().catch(err=>{ selftestEl.textContent='SELFTEST_FAIL\n'+String(err.message); document.body.setAttribute('data-selftest','FAIL'); }); }
+})();
+</script>
+</body>
+</html>
