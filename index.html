@@ -610,6 +610,15 @@ function spr(img,cx,cy,w,h){
   if(!imgOk(img)) return;
   ctx.drawImage(img,cx-w/2,cy-h/2,w,h);
 }
+function sprFlip(img,cx,cy,w,h,flipX){
+  if(!imgOk(img)) return;
+  if(flipX){
+    ctx.save(); ctx.translate(cx,cy); ctx.scale(-1,1);
+    ctx.drawImage(img,-w/2,-h/2,w,h); ctx.restore();
+  } else {
+    ctx.drawImage(img,cx-w/2,cy-h/2,w,h);
+  }
+}
 
 function drawWorld(){
   ctx.fillStyle='#2b1508';
@@ -653,11 +662,12 @@ function drawWorld(){
 function drawPlayer(p){
   const form=formLv(), img=IMG[`hero${form}`];
   const awake=p.awake>0, flash=p.inv>0&&Math.floor(p.inv*18)%2===0;
+  const flipX=Math.cos(p.dir)<0;
   const maxT=form===2?14:9;
   for(let i=Math.min(p.trail.length-1,maxT);i>=1;i--){
     const t=p.trail[i]; if(!t) continue;
     ctx.globalAlpha=(0.06+0.12*(1-i/maxT))*(flash?.3:1);
-    const s=1-i*.03; spr(img,t.x,t.y,68*s,62*s);
+    const s=1-i*.03; sprFlip(img,t.x,t.y,68*s,62*s,flipX);
   }
   ctx.globalAlpha=1;
   const lx=p.x+Math.cos(p.dir)*22, ly=p.y+Math.sin(p.dir)*22;
@@ -667,7 +677,7 @@ function drawPlayer(p){
   if(awake){ctx.shadowColor='#ccff38';ctx.shadowBlur=30;}
   ctx.globalAlpha=flash?.32:1;
   const pulse=awake?1+Math.sin(game.time*9)*.04:1;
-  spr(img,p.x,p.y,72*pulse,66*pulse);
+  sprFlip(img,p.x,p.y,72*pulse,66*pulse,flipX);
   ctx.globalAlpha=1; ctx.shadowBlur=0;
   if(p.barrierReady){
     ctx.strokeStyle='rgba(70,210,255,.72)'; ctx.lineWidth=2.5;
