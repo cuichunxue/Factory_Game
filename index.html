@@ -216,40 +216,49 @@ const SFX_SRC = {
   wake:      'assets/audio/sfx_awaken.wav',
 };
 let AC = null, bgmSrc = null, bgmGain = null;
-let audioReady = false;
 const BUF = {};
 let _audioInitP = null;
 
+function loadAB(src){
+  return new Promise((res,rej)=>{
+    const x=new XMLHttpRequest();
+    x.open('GET',src); x.responseType='arraybuffer';
+    x.onload=()=>{ if(x.status===200||x.status===0) res(x.response); else rej(x.status); };
+    x.onerror=rej; x.send();
+  });
+}
+
 function initAudio(){
-  if(_audioInitP) { if(AC&&AC.state==='suspended') AC.resume(); return _audioInitP; }
-  _audioInitP = (async()=>{
-    try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(_){ return; }
+  if(_audioInitP){ if(AC&&AC.state==='suspended') AC.resume(); return _audioInitP; }
+  _audioInitP=(async()=>{
+    try{ AC=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){ console.warn('AudioContext failed',e); return; }
     if(AC.state==='suspended') await AC.resume();
+    console.log('[audio] context state:',AC.state);
     await Promise.all(Object.entries(SFX_SRC).map(async([k,src])=>{
       try{
-        const r = await fetch(src);
-        if(!r.ok) return;
-        BUF[k] = await AC.decodeAudioData(await r.arrayBuffer());
-      }catch(_){}
+        const ab=await loadAB(src);
+        BUF[k]=await AC.decodeAudioData(ab);
+        console.log('[audio] loaded:',k);
+      }catch(e){ console.warn('[audio] failed:',k,e); }
     }));
-    audioReady = true;
+    console.log('[audio] ready, keys:',Object.keys(BUF).join(','));
   })();
   return _audioInitP;
 }
-function resumeAC(){ if(AC && AC.state==='suspended') AC.resume(); }
-function playBGM(key, vol=0.32){
+function resumeAC(){ if(AC&&AC.state==='suspended') AC.resume(); }
+function playBGM(key,vol=0.32){
   stopBGM();
-  if(!AC||!BUF[key]) return;
+  if(!AC||!BUF[key]){ console.warn('[audio] playBGM skip:',key,!!AC,!!BUF[key]); return; }
   resumeAC();
   bgmGain=AC.createGain(); bgmGain.gain.value=vol; bgmGain.connect(AC.destination);
   bgmSrc=AC.createBufferSource(); bgmSrc.buffer=BUF[key]; bgmSrc.loop=true;
   bgmSrc.connect(bgmGain); bgmSrc.start();
 }
 function stopBGM(){ if(bgmSrc){try{bgmSrc.stop();}catch(_){} bgmSrc=null;} }
-function sfx(key, vol=0.65){
+function sfx(key,vol=0.65){
   if(!AC||!BUF[key]) return;
   resumeAC();
-  const s=AC.createBufferSource(), g=AC.createGain();
+  const s=AC.createBufferSource(),g=AC.createGain();
   s.buffer=BUF[key]; g.gain.value=vol; s.connect(g); g.connect(AC.destination); s.start();
 }
 
