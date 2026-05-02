@@ -216,18 +216,31 @@ const SFX_SRC = {
   wake:      'assets/audio/sfx_awaken.wav',
 };
 let AC = null, bgmSrc = null, bgmGain = null;
+let audioReady = false;
 const BUF = {};
+let _audioInitP = null;
 
-async function initAudio(){
-  if(AC) return;
-  AC = new (window.AudioContext||window.webkitAudioContext)();
-  await Promise.all(Object.entries(SFX_SRC).map(async([k,src])=>{
-    try{ const r=await fetch(src); BUF[k]=await AC.decodeAudioData(await r.arrayBuffer()); }catch(_){}
-  }));
+function initAudio(){
+  if(_audioInitP) { if(AC&&AC.state==='suspended') AC.resume(); return _audioInitP; }
+  _audioInitP = (async()=>{
+    try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(_){ return; }
+    if(AC.state==='suspended') await AC.resume();
+    await Promise.all(Object.entries(SFX_SRC).map(async([k,src])=>{
+      try{
+        const r = await fetch(src);
+        if(!r.ok) return;
+        BUF[k] = await AC.decodeAudioData(await r.arrayBuffer());
+      }catch(_){}
+    }));
+    audioReady = true;
+  })();
+  return _audioInitP;
 }
+function resumeAC(){ if(AC && AC.state==='suspended') AC.resume(); }
 function playBGM(key, vol=0.32){
   stopBGM();
   if(!AC||!BUF[key]) return;
+  resumeAC();
   bgmGain=AC.createGain(); bgmGain.gain.value=vol; bgmGain.connect(AC.destination);
   bgmSrc=AC.createBufferSource(); bgmSrc.buffer=BUF[key]; bgmSrc.loop=true;
   bgmSrc.connect(bgmGain); bgmSrc.start();
@@ -235,6 +248,7 @@ function playBGM(key, vol=0.32){
 function stopBGM(){ if(bgmSrc){try{bgmSrc.stop();}catch(_){} bgmSrc=null;} }
 function sfx(key, vol=0.65){
   if(!AC||!BUF[key]) return;
+  resumeAC();
   const s=AC.createBufferSource(), g=AC.createGain();
   s.buffer=BUF[key]; g.gain.value=vol; s.connect(g); g.connect(AC.destination); s.start();
 }
@@ -913,13 +927,13 @@ function loop(now){
 // ── Init ─────────────────────────────────────────────────────────────────
 loadImages(()=>{
   mode='title'; showScreen('title');
+  let warmed=false;
   const warm=()=>{
+    if(warmed) return;
+    warmed=true;
     initAudio().then(()=>{ if(mode==='title') playBGM('titleBgm',0.25); });
-    document.removeEventListener('touchstart',warm);
-    document.removeEventListener('click',warm);
   };
-  document.addEventListener('touchstart',warm,{once:true});
-  document.addEventListener('click',warm,{once:true});
+  ['pointerdown','touchstart','keydown'].forEach(t=>document.addEventListener(t,warm,{once:true,passive:true}));
   requestAnimationFrame(loop);
 });
 
