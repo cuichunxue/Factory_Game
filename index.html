@@ -222,8 +222,21 @@ const IMG_SRC = {
 for(let i=1;i<=8;i++){ const s=String(i).padStart(2,'0');
   IMG_SRC[`orb${i}`]=`assets/images/sprites/orb_f${s}.png`;
   IMG_SRC[`bullet${i}`]=`assets/images/sprites/bullet_f${s}.png`;
-  IMG_SRC[`hit${i}`]=`assets/images/sprites/hit_f${s}.png`; }
+  IMG_SRC[`hit${i}`]=`assets/images/sprites/hit_f${s}.png`;
+  IMG_SRC[`wroot${i}`]=`assets/images/sprites/root_f${s}.png`;   // 回転根エフェクト
+  IMG_SRC[`spore${i}`]=`assets/images/sprites/spore_f${s}.png`;  // 胞子ノヴァ
+}
 for(let i=1;i<=10;i++) IMG_SRC[`lvup${i}`]=`assets/images/sprites/lvup_f${String(i).padStart(2,'0')}.png`;
+for(let i=1;i<=4;i++){ const s=String(i).padStart(2,'0');
+  IMG_SRC[`mucus${i}`]=`assets/images/sprites/mucus_f${s}.png`;  // 粘液床
+  IMG_SRC[`seeker${i}`]=`assets/images/sprites/seeker_f${s}.png`;// 共生バクテリア
+  IMG_SRC[`chest${i}`]=`assets/images/sprites/chest_f${s}.png`;  // 宝箱
+}
+IMG_SRC.elite_mold='assets/images/sprites/elite_mold.png';
+IMG_SRC.elite_rock='assets/images/sprites/elite_rock.png';
+IMG_SRC.elite_root='assets/images/sprites/elite_root.png';
+// helper: pick frame N (1-based) of a prefixed animation, or null
+function frameImg(prefix,frame,total){ const f=((frame-1)%total)+1; return IMG[`${prefix}${f}`]; }
 
 let loadedCount=0; const totalCount=Object.keys(IMG_SRC).length;
 function loadImages(cb){
@@ -627,7 +640,7 @@ function damagePlayer(amount,kind){
 function spawnHitAnim(x,y){ if(game.hitAnims.length<30) game.hitAnims.push({x,y,age:0}); }
 function spawnLvupAnim(x,y){ game.lvupAnim={x,y,age:0}; }
 function dmgNum(x,y,val,crit){ if(game.dmgNums.length<48) game.dmgNums.push({x:x+rand(-8,8),y,val:Math.round(val),age:0,crit:!!crit,vy:-46}); }
-function nova(x,y,r,color){ game.novas.push({x,y,r:0,max:r,age:0,color}); }
+function nova(x,y,r,color,sprite){ game.novas.push({x,y,r:0,max:r,age:0,color,sprite:sprite||null}); }
 function burst(x,y,color,n){ for(let i=0;i<n;i++){ if(game.particles.length>180)break; const a=rand(0,TAU),s=rand(40,170); game.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:rand(2,5),age:0,life:rand(.3,.6),color}); } }
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -789,7 +802,7 @@ function fireWeapon(id){
     }
     case 'spore':{
       const r=(evo?150:96+lv*16)*areaMul();
-      nova(p.x,p.y,r,evo?'#a0ff40':'#7fe22a');
+      nova(p.x,p.y,r,evo?'#a0ff40':'#7fe22a','spore');
       const dmg=(evo?20:10+lv*3);
       for(const e of allTargets()) if(dist(p.x,p.y,e.x,e.y)<r) hitEnemy(e,dmg,{quiet:true});
       if(evo){ game.pools.push({x:p.x,y:p.y,r:r*0.7,life:3,age:0,dps:8,kind:'plague'}); }
@@ -957,10 +970,11 @@ function drawWorld(){
   }
 }
 function drawPools(){
+  const mImg=frameImg('mucus',Math.floor(game.time*8)+1,4);
   for(const pl of game.pools){
-    const a=clamp(pl.life/1.5,0,1)*0.5;
-    ctx.globalAlpha=a; ctx.fillStyle=pl.kind==='acid'||pl.kind==='plague'?'#9dff18':'#3aa0c0';
-    ctx.beginPath(); ctx.ellipse(pl.x,pl.y,pl.r,pl.r*0.6,0,0,TAU); ctx.fill();
+    const a=clamp(pl.life/1.5,0,1);
+    if(imgOk(mImg)){ ctx.globalAlpha=a*0.85; const d=pl.r*2; ctx.drawImage(mImg,pl.x-pl.r,pl.y-pl.r,d,d*0.75); }
+    else { ctx.globalAlpha=a*0.5; ctx.fillStyle=pl.kind==='acid'||pl.kind==='plague'?'#9dff18':'#3aa0c0'; ctx.beginPath(); ctx.ellipse(pl.x,pl.y,pl.r,pl.r*0.6,0,0,TAU); ctx.fill(); }
   }
   ctx.globalAlpha=1;
 }
@@ -987,15 +1001,19 @@ function drawPlayer(p){
 }
 function drawRoots(){
   if(game.roots.length===0)return;
-  const evo=isEvolved('roots');
+  const evo=isEvolved('roots'); const s=evo?46:34;
+  const animF=frameImg('wroot',Math.floor(game.time*12)+1,8);
   for(const r of game.roots){
     if(r.x==null)continue;
-    if(imgOk(IMG.root)){ const s=evo?40:30; spr(IMG.root,r.x,r.y,s,s); }
+    if(imgOk(animF)){ ctx.save(); ctx.translate(r.x,r.y); ctx.rotate(r.a+Math.PI/2); if(evo){ctx.shadowColor='#ffe066';ctx.shadowBlur=10;} ctx.drawImage(animF,-s/2,-s/2,s,s); ctx.restore(); }
+    else if(imgOk(IMG.root)){ spr(IMG.root,r.x,r.y,s*0.85,s*0.85); }
     else { ctx.fillStyle=evo?'#9be24a':'#6a9a30'; ctx.beginPath(); ctx.arc(r.x,r.y,evo?14:10,0,TAU); ctx.fill(); }
   }
 }
 function drawEnemy(e){
-  const img=IMG[e.type==='mold'?'mold':e.type==='rock'?'rock':'root'];
+  const baseKey=e.type==='mold'?'mold':e.type==='rock'?'rock':'root';
+  const eliteImg=e.elite?IMG['elite_'+baseKey]:null;
+  const img=imgOk(eliteImg)?eliteImg:IMG[baseKey];
   ctx.save();
   if(e.hit>0){ctx.shadowColor='#fff';ctx.shadowBlur=20;}
   if(e.elite){ctx.shadowColor='#ffd23a';ctx.shadowBlur=22;}
@@ -1021,7 +1039,10 @@ function drawMud(h){
   ctx.restore();
 }
 function drawOrb(o){
-  if(o.chest){ ctx.save(); ctx.fillStyle='#ffd23a'; ctx.shadowColor='#ffd23a'; ctx.shadowBlur=14; const s=14+Math.sin(o.age*6)*2; ctx.fillRect(o.x-s,o.y-s*0.8,s*2,s*1.6); ctx.fillStyle='#7a5410'; ctx.fillRect(o.x-s,o.y-2,s*2,4); ctx.restore(); return; }
+  if(o.chest){
+    const cImg=frameImg('chest',Math.floor(o.age*6)+1,4);
+    if(imgOk(cImg)){ ctx.save(); ctx.shadowColor='#ffd23a'; ctx.shadowBlur=12; const s=40+Math.sin(o.age*6)*3; ctx.drawImage(cImg,o.x-s/2,o.y-s/2,s,s); ctx.restore(); return; }
+    ctx.save(); ctx.fillStyle='#ffd23a'; ctx.shadowColor='#ffd23a'; ctx.shadowBlur=14; const s=14+Math.sin(o.age*6)*2; ctx.fillRect(o.x-s,o.y-s*0.8,s*2,s*1.6); ctx.fillStyle='#7a5410'; ctx.fillRect(o.x-s,o.y-2,s*2,4); ctx.restore(); return; }
   const frame=Math.floor(o.age*12)%8+1, img=IMG[`orb${frame}`];
   if(imgOk(img)){ const sc=0.9+Math.sin(o.age*8)*.08; spr(img,o.x,o.y,28*sc,28*sc); }
   else { ctx.save(); ctx.fillStyle='#9ff542'; ctx.shadowColor='#c2ff44'; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,TAU); ctx.fill(); ctx.restore(); }
@@ -1032,9 +1053,18 @@ function drawBullet(b){
   if(imgOk(img)){ ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(b.dir||0); if(b.big){ctx.shadowColor='#ffd23a';ctx.shadowBlur=14;} ctx.drawImage(img,-s/2,-s/2,s,s); ctx.restore(); }
   else { ctx.save(); ctx.fillStyle=b.big?'#ffd23a':'#e0ff56'; ctx.shadowColor='#e0ff56'; ctx.shadowBlur=14; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,TAU); ctx.fill(); ctx.restore(); }
 }
-function drawSeeker(s){ ctx.save(); ctx.fillStyle='#c6ff7a'; ctx.shadowColor='#9ff542'; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,TAU); ctx.fill(); ctx.restore(); }
+function drawSeeker(s){
+  const img=frameImg('seeker',Math.floor(s.age*14)+1,4);
+  if(imgOk(img)){ ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(Math.atan2(s.vy,s.vx)); ctx.drawImage(img,-12,-12,24,24); ctx.restore(); }
+  else { ctx.save(); ctx.fillStyle='#c6ff7a'; ctx.shadowColor='#9ff542'; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,TAU); ctx.fill(); ctx.restore(); }
+}
 function drawNovas(){
-  for(const n of game.novas){ const a=Math.max(0,1-n.age/0.4); ctx.globalAlpha=a*0.6; ctx.strokeStyle=n.color; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,TAU); ctx.stroke(); }
+  for(const n of game.novas){
+    const a=Math.max(0,1-n.age/0.4);
+    const sImg=n.sprite==='spore'?frameImg('spore',Math.floor(n.age*20)+1,8):null;
+    if(imgOk(sImg)){ ctx.globalAlpha=a; const d=n.r*2; ctx.drawImage(sImg,n.x-n.r,n.y-n.r,d,d); }
+    else { ctx.globalAlpha=a*0.6; ctx.strokeStyle=n.color; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,TAU); ctx.stroke(); }
+  }
   ctx.globalAlpha=1;
 }
 function drawHitAnims(){
